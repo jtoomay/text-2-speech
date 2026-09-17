@@ -1,0 +1,23 @@
+# Everything Netlify needs to build and serve the app; no settings required in the Netlify UI.
+
+[build]
+  # Model files are git-ignored, so fetch them first. Files restored from the build
+  # cache (see the plugin below) are skipped. The app itself still makes no outside requests.
+  command = "npm run setup:model && npm run build"
+  publish = "dist"
+
+  [build.environment]
+    NODE_VERSION = "22"
+
+# Keeps public/models/ between builds so the 430 MB download happens only once.
+[[plugins]]
+  package = "/netlify/plugins/model-cache"
+
+# Cross-origin isolation lets the WASM fallback use multiple threads.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+
+# No catch-all SPA redirect: the model loader needs real 404s for optional files.

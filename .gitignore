@@ -26,3 +26,6 @@ dist-ssr
 # Self-hosted model + ONNX runtime (recreate with `npm install` and `npm run setup:model`)
 public/models/
 public/ort/
+
+# Netlify CLI state (created when linking a site)
+.netlify

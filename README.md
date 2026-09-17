@@ -48,6 +48,19 @@ move between sentences. **Download MP3** appears in the player when generation f
 | `npm run setup:model` | Download model files (skips files already present) |
 
 `public/models/` and `public/ort/` are git-ignored; the scripts above recreate them.
-To host the built app elsewhere, deploy `dist/` (it includes the model files) and send the
+
+## Hosting
+
+`npm run build` splits model files larger than 8 MB into `.partN` files listed in
+`dist/models/parts.json` (hosts like Netlify recommend files of 10 MB or less); the worker joins
+them again while loading. To host `dist/` anywhere, serve it as static files without a catch-all
+redirect to `index.html` (the model loader needs real 404s) and send the
 `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers
 so the WASM fallback can use multiple threads.
+
+### Netlify
+
+Connect the repo in Netlify and deploy; `netlify.toml` sets everything, so no build settings are
+needed in the Netlify UI. Each build downloads the model at build time (`npm run setup:model`),
+and the local plugin in `netlify/plugins/model-cache` keeps it in Netlify's build cache so later
+builds skip the ~430 MB download.

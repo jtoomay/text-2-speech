@@ -26,9 +26,53 @@ const REMOTE_VOICES = `https://huggingface.co/${MODEL_ID}/resolve/main/voices/`
 const LOCAL_VOICES = `${MODELS_PATH}${MODEL_ID}/voices/`
 const nativeFetch = self.fetch.bind(self)
 
+// Builds split large model files into parts (see vite.config.ts); the dev server serves them whole.
+type PartsManifest = Record<string, { size: number; parts: number }>
+let partsManifest: Promise<PartsManifest> | undefined
+
+function loadPartsManifest(): Promise<PartsManifest> {
+  partsManifest ??= nativeFetch(`${MODELS_PATH}parts.json`)
+    .then((res) => (res.ok ? res.json() : {}))
+    .catch(() => ({}))
+  return partsManifest
+}
+
+/** Streams the parts of a split file back as a single response. */
+function joinParts(path: string, size: number, parts: number, signal?: AbortSignal | null): Response {
+  let next = 0
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      for (;;) {
+        if (!reader) {
+          if (next === parts) return controller.close()
+          const part = `${path}.part${next++}`
+          const res = await nativeFetch(part, { signal })
+          if (!res.ok || !res.body) throw new Error(`Model file ${part} not found (HTTP ${res.status}).`)
+          reader = res.body.getReader()
+        }
+        const { done, value } = await reader.read()
+        if (!done) return controller.enqueue(value)
+        reader = undefined
+      }
+    },
+    cancel: (reason) => reader?.cancel(reason),
+  })
+  // Content-Length lets Transformers.js size its buffer and report load progress.
+  return new Response(body, { headers: { 'Content-Length': String(size) } })
+}
+
 self.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = new URL(input instanceof Request ? input.url : input, self.location.href)
-  if (url.origin === self.location.origin || url.protocol === 'blob:' || url.protocol === 'data:') {
+  if (url.origin === self.location.origin) {
+    const method = init?.method ?? (input instanceof Request ? input.method : 'GET')
+    if (url.pathname.startsWith(MODELS_PATH) && method.toUpperCase() === 'GET') {
+      const split = (await loadPartsManifest())[decodeURIComponent(url.pathname)]
+      if (split) return joinParts(url.pathname, split.size, split.parts, init?.signal)
+    }
+    return nativeFetch(input, init)
+  }
+  if (url.protocol === 'blob:' || url.protocol === 'data:') {
     return nativeFetch(input, init)
   }
   if (url.href.startsWith(REMOTE_VOICES)) {
