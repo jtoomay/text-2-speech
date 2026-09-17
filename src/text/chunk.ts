@@ -12,8 +12,8 @@ export type Chunk = {
 export const MAX_CHUNK_CHARS = 250
 
 const SENTENCE_PAUSE_MS = 100
-const LINE_PAUSE_MS = 250
-const PARAGRAPH_PAUSE_MS = 500
+export const LINE_PAUSE_MS = 250
+export const PARAGRAPH_PAUSE_MS = 500
 
 // A segment ending in one of these is not really the end of a sentence.
 const ABBREVIATION_END =

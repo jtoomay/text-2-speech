@@ -1,4 +1,4 @@
-# Text to Speech
+# Readback
 
 Paste text, get natural-sounding speech and an MP3. Everything runs in the browser with the
 [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) model via [kokoro-js](https://www.npmjs.com/package/kokoro-js).
@@ -18,6 +18,13 @@ the worker blocks any request that would leave the page's origin.
 Chrome, Edge, or Safari with WebGPU runs about 10× faster than real time. Other browsers fall
 back to WASM (about 1.4× real time on an M4 Pro). Add `?device=wasm` to the URL to force the fallback.
 
+## Using it
+
+Paste text and press **Read aloud** (⌘↵ / Ctrl+Enter). Audio starts as soon as the first sentence is
+ready, and the **Read along** view highlights the sentence being read. Text still generating is shown
+faded; click any sentence that's ready to play from there. **Space** plays or pauses, and **←** / **→**
+move between sentences. **Download MP3** appears in the player when generation finishes.
+
 ## How it works
 
 - `src/text/cleanup.ts` detects court-transcript formatting (margin line numbers, `Q.`/`A.` and
@@ -27,6 +34,8 @@ back to WASM (about 1.4× real time on an M4 Pro). Add `?device=wasm` to the URL
 - `src/tts/worker.ts` generates each chunk in a Web Worker and encodes an MP3 as it goes.
 - `src/audio/StreamingPlayer.ts` plays sections as soon as they're ready, with seek and
   section skipping while generation continues.
+- Fonts (Mona Sans, Literata) are bundled from `@fontsource-variable` packages, so the UI
+  loads nothing from outside the app either.
 
 ## Scripts
 

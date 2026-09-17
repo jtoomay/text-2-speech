@@ -1,1 +1,369 @@
 @import "tailwindcss";
+
+/*
+ * Readback palette: transcript paper on a cool desk.
+ * Highlighter yellow is reserved for the sentence being read.
+ */
+:root {
+  color-scheme: light;
+  --chambers: #e5e9ee;
+  --paper: #fcfcfa;
+  --ink: #1c2638;
+  --pencil: #5c677a;
+  --rule: #d6dce4;
+  --margin: #e3a39b;
+  --highlight: #ffe15a;
+  --on-highlight: #1c2638;
+  --ok: #2e8a57;
+  --danger: #b3261e;
+  --sheet-edge: rgb(28 38 56 / 0.07);
+  --sheet-shadow: 0 1px 2px rgb(28 38 56 / 0.06), 0 22px 44px -24px rgb(28 38 56 / 0.32);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --chambers: #0e1628;
+    --paper: #172137;
+    --ink: #e4e9f2;
+    --pencil: #9ba6bb;
+    --rule: #2a3652;
+    --margin: #82505b;
+    --ok: #5cc98d;
+    --danger: #ff9486;
+    --sheet-edge: #25314b;
+    --sheet-shadow: 0 22px 44px -24px rgb(0 0 0 / 0.7);
+  }
+}
+
+@theme inline {
+  --color-chambers: var(--chambers);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-pencil: var(--pencil);
+  --color-rule: var(--rule);
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
+  --font-sans: "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Literata Variable", ui-serif, Georgia, serif;
+}
+
+@layer base {
+  html {
+    background: var(--chambers);
+  }
+
+  body {
+    background: var(--chambers);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  kbd {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  .wordmark {
+    font-size: 1.375rem;
+    font-weight: 780;
+    font-stretch: 125%;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  /* The page: one sheet of transcript paper with a double margin rule. */
+  .sheet {
+    background: var(--paper);
+    border-radius: 6px;
+    box-shadow: 0 0 0 1px var(--sheet-edge), var(--sheet-shadow);
+  }
+
+  .sheet:has(textarea:focus-visible) {
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--ink) 24%, transparent), var(--sheet-shadow);
+  }
+
+  .sheet-ruled {
+    --margin-x: 1.25rem;
+    position: relative;
+  }
+
+  .sheet-ruled::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: var(--margin-x);
+    width: 5px;
+    border-inline: 1px solid var(--margin);
+    pointer-events: none;
+  }
+
+  .sheet-text {
+    display: block;
+    width: 100%;
+    padding: 1.75rem 1.25rem 1.75rem calc(var(--margin-x) + 1.5rem);
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    font-size: 1.0625rem;
+    line-height: 1.75;
+  }
+
+  @media (width >= 40rem) {
+    .sheet-ruled {
+      --margin-x: 2.25rem;
+    }
+
+    .sheet-text {
+      padding: 2.25rem 2.5rem 2.25rem calc(var(--margin-x) + 2rem);
+      font-size: 1.125rem;
+    }
+  }
+
+  .sheet-text::placeholder {
+    color: var(--pencil);
+    opacity: 1;
+  }
+
+  /* Pill controls */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding-inline: 1rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 540;
+    white-space: nowrap;
+    transition:
+      border-color 150ms,
+      background-color 150ms;
+  }
+
+  .pill:where(:hover, :focus-within):not(:disabled) {
+    border-color: color-mix(in oklab, var(--ink) 40%, var(--rule));
+  }
+
+  .pill:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .pill-primary {
+    min-height: 2.75rem;
+    padding-inline: 1.25rem;
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 620;
+  }
+
+  .pill-primary:where(:hover, :focus-visible):not(:disabled) {
+    background: color-mix(in oklab, var(--ink) 86%, var(--paper));
+  }
+
+  .pill select {
+    flex: 1 1 auto;
+    appearance: none;
+    min-width: 0;
+    text-overflow: ellipsis;
+    padding-right: 1.25rem;
+    background: transparent;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .pill select:focus-visible {
+    outline: none;
+  }
+
+  .pill:has(select:focus-visible) {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  .link-button {
+    color: var(--ink);
+    font-weight: 560;
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+    transition: text-decoration-color 150ms;
+  }
+
+  .link-button:hover {
+    text-decoration-color: currentColor;
+  }
+
+  /* Toggle switch */
+  .switch {
+    position: relative;
+    flex: none;
+    width: 2.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: var(--rule);
+    transition: background-color 180ms;
+  }
+
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--paper);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+    transition: translate 180ms cubic-bezier(0.3, 0.7, 0.2, 1);
+  }
+
+  .switch[aria-checked="true"] {
+    background: var(--ink);
+  }
+
+  .switch[aria-checked="true"]::after {
+    translate: 1rem 0;
+  }
+
+  /* Reading view: the text doubles as the generation progress bar. */
+  .sentence {
+    border-radius: 2px;
+    transition: color 450ms ease;
+  }
+
+  .sentence[data-state="pending"] {
+    color: color-mix(in oklab, var(--ink) 34%, transparent);
+  }
+
+  .sentence[data-state="ready"] {
+    cursor: pointer;
+  }
+
+  .sentence[data-state="ready"]:hover {
+    background: color-mix(in oklab, var(--ink) 7%, transparent);
+  }
+
+  .sentence[data-state="current"] {
+    margin-inline: -0.12em;
+    padding: 0.06em 0.12em;
+    color: var(--on-highlight);
+    background-image: linear-gradient(var(--highlight), var(--highlight));
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    /* Without box-decoration-break, the sweep crosses wrapped lines in reading order. */
+    animation: highlight-sweep 560ms cubic-bezier(0.3, 0.7, 0.2, 1);
+  }
+
+  @keyframes highlight-sweep {
+    from {
+      background-size: 0% 100%;
+    }
+  }
+
+  /* Seek bar */
+  .scrubber {
+    --fill: 0%;
+    appearance: none;
+    height: 1.25rem;
+    min-width: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .scrubber:focus-visible {
+    outline-offset: 0;
+    border-radius: 4px;
+  }
+
+  .scrubber::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--ink) var(--fill), var(--rule) var(--fill));
+  }
+
+  .scrubber::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -5px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ink);
+    transition: scale 150ms;
+  }
+
+  .scrubber:where(:hover, :active)::-webkit-slider-thumb {
+    scale: 1.3;
+  }
+
+  .scrubber::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--rule);
+  }
+
+  .scrubber::-moz-range-progress {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--ink);
+  }
+
+  .scrubber::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+
+  .scrubber:disabled {
+    cursor: default;
+  }
+
+  /* Ring around the play button while playback waits for audio. */
+  .waiting-ring {
+    position: absolute;
+    inset: -4px;
+    border: 2px solid transparent;
+    border-top-color: var(--ink);
+    border-radius: 50%;
+    animation: spin 900ms linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .waiting-ring {
+    animation: none;
+    border-color: var(--ink);
+    border-style: dotted;
+  }
+}

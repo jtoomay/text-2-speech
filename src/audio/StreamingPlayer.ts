@@ -157,8 +157,12 @@ export class StreamingPlayer {
   }
 
   nextSection() {
-    const next = this.sections[this.currentIndex() + 1]
-    if (next) this.seek(next.start)
+    this.seekSection(this.currentIndex() + 1)
+  }
+
+  seekSection(index: number) {
+    const section = this.sections[index]
+    if (section) this.seek(section.start)
   }
 
   // --- Timeline
