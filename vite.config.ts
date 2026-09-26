@@ -17,6 +17,12 @@ const isolationHeaders = {
 const PART_SIZE = 8 * 1024 * 1024
 const PARTS_MANIFEST = 'models/parts.json'
 
+// The mobile shell (mobile/) mirrors this build's output onto the device on first
+// launch, then serves it from local disk forever after. fp32 model.onnx is WebGPU-only
+// (mobile WebViews have no WebGPU), so it's excluded to keep the mobile download small.
+const MIRROR_MANIFEST = 'mirror-manifest.json'
+const WEBGPU_ONLY_PREFIX = 'models/onnx-community/Kokoro-82M-v1.0-ONNX/onnx/model.onnx'
+
 type PartsManifest = Record<string, { size: number; parts: number }>
 
 async function* walkFiles(dir: string): AsyncGenerator<string> {
@@ -62,6 +68,16 @@ async function splitLargeModelFiles(outDir: string) {
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
 }
 
+async function writeMirrorManifest(outDir: string) {
+  const manifest: Record<string, number> = {}
+  for await (const file of walkFiles(outDir)) {
+    const rel = relative(outDir, file).split(sep).join('/')
+    if (rel === MIRROR_MANIFEST || rel.startsWith(WEBGPU_ONLY_PREFIX)) continue
+    manifest[rel] = (await stat(file)).size
+  }
+  await writeFile(join(outDir, MIRROR_MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`)
+}
+
 // Serving rules for the self-hosted model and runtime files:
 // - Vite answers unknown paths with index.html (200). Transformers.js relies on a
 //   real 404 to skip optional files and to report missing model files.
@@ -97,7 +113,9 @@ function localModelAssets(): Plugin {
     configurePreviewServer: (server) => void server.middlewares.use(middleware(() => outDir)),
     // Also called when the dev server stops; only split real build output.
     closeBundle: async () => {
-      if (isBuild) await splitLargeModelFiles(outDir)
+      if (!isBuild) return
+      await splitLargeModelFiles(outDir)
+      await writeMirrorManifest(outDir)
     },
   }
 }
