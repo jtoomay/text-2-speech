@@ -110,11 +110,15 @@
   .sheet-text {
     display: block;
     width: 100%;
-    padding: 1.75rem 1.25rem 1.75rem calc(var(--margin-x) + 1.5rem);
+    padding: 1.75rem 1.25rem;
     font-family: var(--font-serif);
     font-optical-sizing: auto;
     font-size: 1.0625rem;
     line-height: 1.75;
+  }
+
+  .sheet-ruled .sheet-text {
+    padding-left: calc(var(--margin-x) + 1.5rem);
   }
 
   @media (width >= 40rem) {
@@ -123,8 +127,12 @@
     }
 
     .sheet-text {
-      padding: 2.25rem 2.5rem 2.25rem calc(var(--margin-x) + 2rem);
+      padding: 2.25rem 2.5rem;
       font-size: 1.125rem;
+    }
+
+    .sheet-ruled .sheet-text {
+      padding-left: calc(var(--margin-x) + 2rem);
     }
   }
 

@@ -71,8 +71,6 @@ function PillSelect({ label, ...props }: { label: string } & ComponentProps<'sel
 
 type Props = {
   hidden: boolean
-  /** The player is pinned to the bottom of the window, so leave room for it. */
-  docked: boolean
   text: string
   onTextChange: (text: string) => void
   /** Text as it will be spoken, derived from a deferred copy of `text`. */
@@ -85,6 +83,8 @@ type Props = {
   onVoiceChange: (voice: string) => void
   speed: number
   onSpeedChange: (speed: number) => void
+  showMargin: boolean
+  onShowMarginChange: (showMargin: boolean) => void
   loading: boolean
   canRead: boolean
   onRead: () => void
@@ -107,14 +107,14 @@ export function Composer(props: Props) {
   }
 
   return (
-    <div hidden={props.hidden} className={`flex flex-col gap-4 ${props.docked ? '[--chrome:30rem]' : '[--chrome:24rem]'}`}>
-      <section className="sheet">
-        <div className="sheet-ruled">
+    <div hidden={props.hidden} className="flex min-h-0 flex-1 flex-col gap-4">
+      <section className="sheet flex min-h-0 flex-1 flex-col">
+        <div className={`flex min-h-0 flex-1 flex-col ${props.showMargin ? 'sheet-ruled' : ''}`}>
           {previewing && (
             <div
               tabIndex={0}
               aria-label="Cleaned text preview"
-              className="sheet-text h-[clamp(18rem,calc(100dvh_-_var(--chrome)),44rem)] overflow-y-auto whitespace-pre-wrap"
+              className="sheet-text min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap"
             >
               {spokenText}
             </div>
@@ -124,7 +124,7 @@ export function Composer(props: Props) {
             hidden={previewing}
             autoFocus
             aria-label="Text to read aloud"
-            className="sheet-text h-[clamp(18rem,calc(100dvh_-_var(--chrome)),44rem)] resize-none bg-transparent focus-visible:outline-none"
+            className="sheet-text min-h-0 flex-1 resize-none bg-transparent focus-visible:outline-none"
             placeholder="Paste a transcript or any text you want to hear. Line numbers and speaker labels from court transcripts are tidied up automatically."
             value={text}
             onChange={(e) => props.onTextChange(e.target.value)}
@@ -136,22 +136,32 @@ export function Composer(props: Props) {
         </div>
 
         {hasText ? (
-          <footer className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-t border-rule px-5 py-4 sm:px-6">
-            <div className="flex items-start gap-3">
-              <button
-                id={cleanupId}
-                type="button"
-                role="switch"
-                aria-checked={cleanup}
-                className="switch mt-0.5"
-                onClick={() => props.onCleanupChange(!cleanup)}
-              />
-              <div>
-                <label htmlFor={cleanupId} className="cursor-pointer font-semibold">
-                  Clean up transcript formatting
-                </label>
-                <p className="text-[13px] text-pencil">{describeCleanup(props.formatting, cleanup)}</p>
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-8 gap-y-3 border-t border-rule px-5 py-4 sm:px-6">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start gap-3">
+                <button
+                  id={cleanupId}
+                  type="button"
+                  role="switch"
+                  aria-checked={cleanup}
+                  className="switch mt-0.5"
+                  onClick={() => props.onCleanupChange(!cleanup)}
+                />
+                <div>
+                  <label htmlFor={cleanupId} className="cursor-pointer font-semibold">
+                    Clean up transcript formatting
+                  </label>
+                  <p className="text-[13px] text-pencil">{describeCleanup(props.formatting, cleanup)}</p>
+                </div>
               </div>
+              <label className="flex items-center gap-2 pl-[calc(2.25rem+0.75rem)] text-[13px] text-pencil">
+                <input
+                  type="checkbox"
+                  checked={props.showMargin}
+                  onChange={(e) => props.onShowMarginChange(e.target.checked)}
+                />
+                Show ruled margin
+              </label>
             </div>
             <div className="flex items-center gap-5 text-[13px] text-pencil">
               <span className="tabular-nums">{describeLength(spokenText, props.speed)}</span>
@@ -164,7 +174,7 @@ export function Composer(props: Props) {
           </footer>
         ) : (
           canReadClipboard && (
-            <footer className="border-t border-rule px-5 py-4 text-[13px] sm:px-6">
+            <footer className="shrink-0 border-t border-rule px-5 py-4 text-[13px] sm:px-6">
               <button type="button" className="link-button" onClick={pasteFromClipboard}>
                 Paste from clipboard
               </button>
@@ -173,7 +183,7 @@ export function Composer(props: Props) {
         )}
       </section>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:flex-wrap">
+      <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:flex-wrap">
         <PillSelect
           label="Voice"
           value={props.voice}

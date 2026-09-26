@@ -41,7 +41,7 @@ export function PlayerControls({ player, generating, progress, download, onStop,
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-10 border-t border-rule bg-paper/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg">
-      <div className="mx-auto max-w-3xl px-4 py-3 sm:px-6">
+      <div className="mx-auto max-w-[57.6rem] px-4 py-3 sm:px-6">
         {showSentence && hasAudio && (
           <p className="mb-1.5 truncate font-serif text-sm text-pencil" aria-live="off">
             {state.sectionText}

@@ -1,10 +1,14 @@
-import { useDeferredValue, useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { Toaster } from 'react-hot-toast'
 import { StreamingPlayer } from './audio/StreamingPlayer'
 import { Composer } from './components/Composer'
+import { HistoryPanel } from './components/HistoryPanel'
 import { Mark } from './components/icons'
 import { ModelStatus } from './components/ModelStatus'
 import { PlayerControls } from './components/PlayerControls'
 import { ReadingView, type Script } from './components/ReadingView'
+import { historyStore } from './history/historyStore'
+import { notify } from './notify'
 import { chunkText } from './text/chunk'
 import { cleanText, detectFormatting, needsCleanup, type Formatting } from './text/cleanup'
 import { useTts } from './tts/useTts'
@@ -37,18 +41,22 @@ function isTyping(target: EventTarget | null): boolean {
 export default function App() {
   const [player] = useState(() => new StreamingPlayer())
   const tts = useTts(player)
+  const mainRef = useRef<HTMLElement>(null)
 
   const [text, setText] = useState('')
   const [voice, setVoice] = useState('af_heart')
   const [speed, setSpeed] = useState(1)
   // null = follow detection; true/false = the user's choice for this text.
   const [cleanupOverride, setCleanupOverride] = useState<boolean | null>(null)
+  // null = follow the cleanup toggle; true/false = the user's choice for this text.
+  const [marginOverride, setMarginOverride] = useState<boolean | null>(null)
   const [script, setScript] = useState<Script>()
   const [view, setView] = useState<View>('text')
 
   const deferredText = useDeferredValue(text)
   const formatting = useMemo(() => detectFormatting(deferredText), [deferredText])
   const cleanup = cleanupOverride ?? needsCleanup(formatting)
+  const showMargin = marginOverride ?? cleanup
   const spokenText = useMemo(
     () => textToSpeak(deferredText, formatting, cleanup),
     [deferredText, formatting, cleanup],
@@ -64,11 +72,19 @@ export default function App() {
     const clean = cleanupOverride ?? needsCleanup(current)
     const chunks = chunkText(textToSpeak(text, current, clean))
     if (chunks.length === 0) return
+    historyStore.add(text)
     setScript({ chunks, transcript: clean && (current.lineNumbers || current.speakerLabels) })
     setView('listen')
-    window.scrollTo({ top: 0 })
+    mainRef.current?.scrollTo({ top: 0 })
     tts.generate(chunks, voice, speed)
   }
+
+  const lastDownloadUrl = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!tts.download || tts.download.url === lastDownloadUrl.current) return
+    lastDownloadUrl.current = tts.download.url
+    notify(tts.download.cancelled ? 'Partial speech ready to download' : 'Speech ready to download')
+  }, [tts.download])
 
   const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
@@ -98,8 +114,19 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-dvh">
-      <header className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 pt-5 sm:px-6 sm:pt-8">
+    <div className="flex h-dvh flex-col overflow-hidden">
+      <Toaster position="top-center" containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }} />
+
+      <HistoryPanel
+        onSelect={(value) => {
+          setText(value)
+          setCleanupOverride(null)
+          setMarginOverride(null)
+          setView('text')
+        }}
+      />
+
+      <header className="mx-auto flex w-full shrink-0 max-w-[57.6rem] flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 pt-5 sm:px-6 sm:pt-8">
         <h1 className="flex items-center gap-2.5">
           <Mark />
           <span className="wordmark">Readback</span>
@@ -107,7 +134,10 @@ export default function App() {
         <ModelStatus status={tts.status} loadPct={tts.loadPct} device={tts.device} />
       </header>
 
-      <main className={`mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-6 sm:px-6 sm:pt-10 ${script ? 'pb-48 sm:pb-40' : 'pb-16'}`}>
+      <main
+        ref={mainRef}
+        className={`mx-auto flex w-full min-h-0 max-w-[57.6rem] flex-1 flex-col gap-4 overflow-y-auto px-4 pt-6 sm:px-6 sm:pt-10 ${script ? 'pb-48 sm:pb-40' : 'pb-16'}`}
+      >
         {tts.error && (
           <p role="alert" className="rounded-md border border-danger/30 bg-danger/5 px-4 py-3 text-danger">
             <Message text={tts.error} />
@@ -145,11 +175,11 @@ export default function App() {
 
         <Composer
           hidden={listening}
-          docked={script !== undefined}
           text={text}
           onTextChange={(value) => {
             setText(value)
             setCleanupOverride(null)
+            setMarginOverride(null)
           }}
           spokenText={spokenText}
           formatting={formatting}
@@ -160,6 +190,8 @@ export default function App() {
           onVoiceChange={setVoice}
           speed={speed}
           onSpeedChange={setSpeed}
+          showMargin={showMargin}
+          onShowMarginChange={setMarginOverride}
           loading={tts.status === 'loading'}
           canRead={canRead}
           onRead={handleRead}
