@@ -1,4 +1,4 @@
-import { Fragment, memo, useEffect, useMemo, useRef, useSyncExternalStore, type MouseEvent } from 'react'
+import { Fragment, memo, useEffect, useMemo, useRef, useSyncExternalStore, type CSSProperties, type MouseEvent } from 'react'
 import type { StreamingPlayer } from '../audio/StreamingPlayer'
 import { LINE_PAUSE_MS, PARAGRAPH_PAUSE_MS, type Chunk } from '../text/chunk'
 
@@ -114,7 +114,13 @@ export function ReadingView({ script, player }: Props) {
   }
 
   return (
-    <article ref={articleRef} aria-label="Text being read" className="sheet sheet-ruled" onClick={handleClick}>
+    <article
+      ref={articleRef}
+      aria-label="Text being read"
+      className="sheet sheet-ruled"
+      style={{ '--rate': state.rate } as CSSProperties}
+      onClick={handleClick}
+    >
       <div className="sheet-text min-h-72 text-[1.1875rem] leading-[1.8] sm:text-[1.3125rem]">
         <Pages layout={layout} transcript={script.transcript} ready={ready} current={current} />
       </div>

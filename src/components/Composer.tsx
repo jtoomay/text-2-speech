@@ -3,7 +3,8 @@ import type { Formatting } from '../text/cleanup'
 import type { VoiceInfo } from '../tts/messages'
 import { ChevronIcon, PlayIcon } from './icons'
 
-const SPEEDS = [0.8, 0.9, 1, 1.1, 1.25, 1.5]
+/** Kokoro's speaking rate, applied while generating. Distinct from playback speed. */
+const VOICE_PACES = [0.8, 0.9, 1, 1.1, 1.25, 1.5]
 /** Kokoro's approximate pace at 1×, including pauses. */
 const WORDS_PER_MINUTE = 140
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent)
@@ -28,9 +29,9 @@ function describeCleanup(f: Formatting, cleanup: boolean): string {
   return `Off, so ${found} will be read as written.`
 }
 
-function describeLength(text: string, speed: number): string {
+function describeLength(text: string, voicePace: number): string {
   const words = text.match(/\S+/g)?.length ?? 0
-  const minutes = Math.round(words / (WORDS_PER_MINUTE * speed))
+  const minutes = Math.round(words / (WORDS_PER_MINUTE * voicePace))
   let length = 'under a minute'
   if (minutes >= 60) {
     const m = minutes % 60
@@ -81,8 +82,8 @@ type Props = {
   voice: string
   voices: VoiceInfo[]
   onVoiceChange: (voice: string) => void
-  speed: number
-  onSpeedChange: (speed: number) => void
+  voicePace: number
+  onVoicePaceChange: (voicePace: number) => void
   showMargin: boolean
   onShowMarginChange: (showMargin: boolean) => void
   loading: boolean
@@ -164,7 +165,7 @@ export function Composer(props: Props) {
               </label>
             </div>
             <div className="flex items-center gap-5 text-[13px] text-pencil">
-              <span className="tabular-nums">{describeLength(spokenText, props.speed)}</span>
+              <span className="tabular-nums">{describeLength(spokenText, props.voicePace)}</span>
               {cleanup && (
                 <button type="button" className="link-button" onClick={() => setShowCleaned(!previewing)}>
                   {previewing ? 'Show original' : 'Show cleaned text'}
@@ -203,11 +204,11 @@ export function Composer(props: Props) {
         </PillSelect>
 
         <PillSelect
-          label="Speed"
-          value={props.speed}
-          onChange={(e) => props.onSpeedChange(Number(e.target.value))}
+          label="Voice pace"
+          value={props.voicePace}
+          onChange={(e) => props.onVoicePaceChange(Number(e.target.value))}
         >
-          {SPEEDS.map((s) => (
+          {VOICE_PACES.map((s) => (
             <option key={s} value={s}>
               {s}×
             </option>

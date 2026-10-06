@@ -1,7 +1,8 @@
 import { useSyncExternalStore, type ComponentProps, type CSSProperties } from 'react'
+import { PLAYBACK_RATES } from '../audio/rateSetting'
 import type { StreamingPlayer } from '../audio/StreamingPlayer'
 import type { Download } from '../tts/useTts'
-import { DownloadIcon, NextIcon, PauseIcon, PlayIcon, PreviousIcon, StopIcon } from './icons'
+import { ChevronIcon, DownloadIcon, NextIcon, PauseIcon, PlayIcon, PreviousIcon, StopIcon } from './icons'
 
 function formatTime(seconds: number): string {
   const total = Math.floor(seconds)
@@ -20,6 +21,30 @@ function SkipButton({ label, ...props }: { label: string } & ComponentProps<'but
       className="grid size-10 place-items-center rounded-full text-ink transition-colors hover:bg-ink/8 disabled:opacity-35 disabled:hover:bg-transparent"
       {...props}
     />
+  )
+}
+
+function RateSelect({ rate, disabled, onChange }: { rate: number; disabled: boolean; onChange: (rate: number) => void }) {
+  return (
+    <label
+      className="pill relative ml-1 h-10 min-h-0 px-2.5 text-[13px] has-[select:disabled]:opacity-35"
+      title="Playback speed ([ and ])"
+    >
+      <select
+        aria-label="Playback speed"
+        className="text-center"
+        value={rate}
+        disabled={disabled}
+        onChange={(e) => onChange(Number(e.target.value))}
+      >
+        {PLAYBACK_RATES.map((value) => (
+          <option key={value} value={value}>
+            {value}×
+          </option>
+        ))}
+      </select>
+      <ChevronIcon className="pointer-events-none absolute right-2 size-3.5 text-pencil" />
+    </label>
   )
 }
 
@@ -84,6 +109,7 @@ export function PlayerControls({ player, generating, progress, download, onStop,
             <SkipButton label="Next section (→)" onClick={() => player.nextSection()} disabled={!hasAudio}>
               <NextIcon className="size-[18px]" />
             </SkipButton>
+            <RateSelect rate={state.rate} disabled={!hasAudio} onChange={(rate) => player.setRate(rate)} />
           </div>
 
           <div className="flex items-center justify-end gap-4 sm:order-3">

@@ -1,5 +1,6 @@
 import { useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
+import { stepRate } from './audio/rateSetting'
 import { StreamingPlayer } from './audio/StreamingPlayer'
 import { Composer } from './components/Composer'
 import { HistoryPanel } from './components/HistoryPanel'
@@ -45,7 +46,8 @@ export default function App() {
 
   const [text, setText] = useState('')
   const [voice, setVoice] = useState('af_heart')
-  const [speed, setSpeed] = useState(1)
+  // How fast the voice speaks while generating; playback speed lives in the player.
+  const [voicePace, setVoicePace] = useState(1)
   // null = follow detection; true/false = the user's choice for this text.
   const [cleanupOverride, setCleanupOverride] = useState<boolean | null>(null)
   // null = follow the cleanup toggle; true/false = the user's choice for this text.
@@ -76,7 +78,7 @@ export default function App() {
     setScript({ chunks, transcript: clean && (current.lineNumbers || current.speakerLabels) })
     setView('listen')
     mainRef.current?.scrollTo({ top: 0 })
-    tts.generate(chunks, voice, speed)
+    tts.generate(chunks, voice, voicePace)
   }
 
   const lastDownloadUrl = useRef<string | undefined>(undefined)
@@ -104,6 +106,9 @@ export default function App() {
     } else if (event.key === 'ArrowRight') {
       event.preventDefault()
       player.nextSection()
+    } else if (event.key === '[' || event.key === ']') {
+      event.preventDefault()
+      player.setRate(stepRate(player.getSnapshot().rate, event.key === '[' ? -1 : 1))
     }
   })
 
@@ -188,8 +193,8 @@ export default function App() {
           voice={voice}
           voices={tts.voices}
           onVoiceChange={setVoice}
-          speed={speed}
-          onSpeedChange={setSpeed}
+          voicePace={voicePace}
+          onVoicePaceChange={setVoicePace}
           showMargin={showMargin}
           onShowMarginChange={setMarginOverride}
           loading={tts.status === 'loading'}

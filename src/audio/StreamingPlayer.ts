@@ -1,3 +1,6 @@
+import { loadRate, saveRate } from './rateSetting'
+import { timeStretch } from './timeStretch'
+
 type Section = {
   text: string
   pcm: Int16Array
@@ -15,6 +18,8 @@ type Scheduled = {
   endAt: number
   /** Timeline position when the source starts playing. */
   positionAtStart: number
+  /** Timeline position once the source has finished. */
+  endPosition: number
 }
 
 export type PlayerState = {
@@ -28,6 +33,8 @@ export type PlayerState = {
   sectionIndex: number
   sectionCount: number
   sectionText: string
+  /** Playback speed, where 1 is the speed the audio was generated at. */
+  rate: number
 }
 
 /** Seconds of lead time when starting a source, so it starts cleanly. */
@@ -48,6 +55,13 @@ export class StreamingPlayer {
   private complete = false
 
   private playing = false
+  /**
+   * Playback speed. Positions and durations stay in the audio's original
+   * seconds; only the mapping to and from AudioContext time involves the rate.
+   */
+  private rate = loadRate()
+  /** Sections rendered at the current rate, by index. Cleared when it changes. */
+  private stretched = new Map<number, Float32Array>()
   private scheduled: Scheduled[] = []
   private nextIndex = 0
   private nextStartAt = 0
@@ -84,6 +98,7 @@ export class StreamingPlayer {
       sectionIndex: index,
       sectionCount: this.sections.length,
       sectionText: this.sections[index]?.text ?? '',
+      rate: this.rate,
     }
   }
 
@@ -92,6 +107,7 @@ export class StreamingPlayer {
   reset() {
     this.stopScheduled()
     this.sections = []
+    this.stretched.clear()
     this.duration = 0
     this.complete = false
     this.playing = false
@@ -147,6 +163,21 @@ export class StreamingPlayer {
     this.emit()
   }
 
+  setRate(rate: number) {
+    if (rate === this.rate) return
+    // Read the position first: getPosition() reads the timeline at the old rate.
+    const position = this.getPosition()
+    this.rate = rate
+    saveRate(rate)
+    this.stretched.clear()
+    // Queued sources are already rendered at the old rate, so they have to go.
+    // Re-scheduling from the current position is exactly what seek() does.
+    this.stopScheduled()
+    this.restPosition = position
+    if (this.playing) this.startFrom(position)
+    this.emit()
+  }
+
   prevSection() {
     const index = this.currentIndex()
     const section = this.sections[index]
@@ -173,9 +204,9 @@ export class StreamingPlayer {
     let position = this.restPosition
     for (const item of this.scheduled) {
       if (now < item.startAt) return item.positionAtStart
-      if (now < item.endAt) return item.positionAtStart + (now - item.startAt)
+      if (now < item.endAt) return item.positionAtStart + (now - item.startAt) * this.rate
       // Finished, but its `ended` event hasn't been delivered yet.
-      position = item.positionAtStart + (item.endAt - item.startAt)
+      position = item.endPosition
     }
     return position
   }
@@ -234,21 +265,24 @@ export class StreamingPlayer {
   private schedule(index: number, startAt: number, offset: number) {
     const ctx = this.ctx!
     const section = this.sections[index]
-    const buffer = ctx.createBuffer(1, section.pcm.length, section.sampleRate)
-    const channel = buffer.getChannelData(0)
-    for (let i = 0; i < section.pcm.length; i++) channel[i] = section.pcm[i] / 0x8000
+    const samples = this.render(index)
+    const buffer = ctx.createBuffer(1, samples.length, section.sampleRate)
+    buffer.getChannelData(0).set(samples)
 
     const source = ctx.createBufferSource()
     source.buffer = buffer
     source.connect(ctx.destination)
-    source.start(startAt, offset)
+    // The rendered buffer is already compressed by `rate`, so a timeline offset
+    // into the section sits at `offset / rate` within it.
+    source.start(startAt, offset / this.rate)
 
     const item: Scheduled = {
       index,
       source,
       startAt,
-      endAt: startAt + section.duration - offset,
+      endAt: startAt + (section.duration - offset) / this.rate,
       positionAtStart: section.start + offset,
+      endPosition: section.start + section.duration,
     }
     source.onended = () => {
       this.scheduled = this.scheduled.filter((s) => s !== item)
@@ -258,6 +292,20 @@ export class StreamingPlayer {
     }
     this.scheduled.push(item)
     this.nextStartAt = item.endAt
+  }
+
+  /** The section's audio at the current rate, cached because seeking replays it. */
+  private render(index: number): Float32Array {
+    const cached = this.stretched.get(index)
+    if (cached) return cached
+    const samples = timeStretch(this.sections[index].pcm, this.rate)
+    this.stretched.set(index, samples)
+    // Keep only what is in flight; a long transcript would otherwise hold a
+    // rendered copy of every section it has played.
+    for (const key of this.stretched.keys()) {
+      if (key < index - QUEUE_AHEAD) this.stretched.delete(key)
+    }
+    return samples
   }
 
   private stopScheduled() {
